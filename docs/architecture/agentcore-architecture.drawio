@@ -1,0 +1,133 @@
+<mxfile host="app.diagrams.net" agent="draw.io">
+  <diagram id="economic-reporter-arch" name="Economic Reporter Architecture">
+    <mxGraphModel dx="2004" dy="1116" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="slack_user" parent="1" style="outlineConnect=0;fontColor=#232F3E;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;" value="Slack User" vertex="1">
+          <mxGeometry height="80" width="80" x="190" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="shared_account" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" value="Shared Account (202949997891)" vertex="1">
+          <mxGeometry height="760" width="360" x="333.64" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="shared_region" parent="shared_account" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#00A4A6;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;dashed=1;" value="ap-northeast-2" vertex="1">
+          <mxGeometry height="640" width="280" x="30" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw" parent="shared_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" value="API Gateway&#xa;(/slack)" vertex="1">
+          <mxGeometry height="80" width="80" x="60" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda_auth" parent="shared_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" value="Lambda Authorizer" vertex="1">
+          <mxGeometry height="80" width="80" x="60" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_shared" parent="shared_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;" value="Secrets Manager&#xa;(economic-reporter)" vertex="1">
+          <mxGeometry height="80" width="80" x="60" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_apigw_lambda_auth" edge="1" parent="shared_region" source="apigw" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="lambda_auth" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_lambda_auth_sm_shared" edge="1" parent="shared_region" source="lambda_auth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="sm_shared" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dev_account" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" value="Dev Account (558846430793)" vertex="1">
+          <mxGeometry height="760" width="1020" x="780" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev_region" parent="dev_account" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#00A4A6;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;dashed=1;" value="ap-northeast-2" vertex="1">
+          <mxGeometry height="640" width="960" x="30" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="eventbridge" parent="dev_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;" value="EventBridge&#xa;(cron 21:00 UTC)" vertex="1">
+          <mxGeometry height="80" width="80" x="30" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="trigger_lambda" parent="dev_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" value="Trigger Lambda" vertex="1">
+          <mxGeometry height="80" width="80" x="250" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_lambda" parent="dev_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" value="Worker Lambda&#xa;(concurrency=1)" vertex="1">
+          <mxGeometry height="80" width="80" x="250" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="agentcore_group" parent="dev_region" style="container=1;pointerEvents=0;collapsible=0;recursiveResize=0;fillColor=none;strokeColor=#01A88D;dashed=1;verticalAlign=top;align=left;spacingLeft=30;fontColor=#01A88D;fontSize=10;html=1;whiteSpace=wrap;" value="AgentCore Runtime" vertex="1">
+          <mxGeometry height="220" width="480" x="400" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="agentcore_icon" parent="agentcore_group" style="outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" value="" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="strands_agent" parent="agentcore_group" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_generic;whiteSpace=wrap;html=1;fixedSize=1;strokeColor=#147EBA;fillColor=none;verticalAlign=middle;align=center;fontSize=10;fontColor=#232F3E;" value="Strands Agent" vertex="1">
+          <mxGeometry height="80" width="140" x="200" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock_claude" parent="dev_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" value="Amazon Bedrock&#xa;(Claude)" vertex="1">
+          <mxGeometry height="80" width="80" x="60" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_dev" parent="dev_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;" value="Secrets Manager&#xa;(economic-reporter)" vertex="1">
+          <mxGeometry height="80" width="80" x="280" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="sns" parent="dev_region" style="outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sns;" value="SNS (Email)" vertex="1">
+          <mxGeometry height="80" width="80" x="500" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_eventbridge_worker_lambda" edge="1" parent="dev_region" source="eventbridge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="worker_lambda" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_trigger_worker" edge="1" parent="dev_region" source="trigger_lambda" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;dashed=1;" target="worker_lambda" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_worker_agentcore" edge="1" parent="dev_region" source="worker_lambda" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;dashed=1;" target="agentcore_group" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="365" y="210" />
+              <mxPoint x="365" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="serpapi" parent="1" style="outlineConnect=0;fontColor=#232F3E;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.internet_alt2;" value="SerpAPI (Google News)" vertex="1">
+          <mxGeometry height="80" width="80" x="1880" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="slack_webhook" parent="1" style="outlineConnect=0;fontColor=#232F3E;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.internet_alt2;" value="Slack Webhook" vertex="1">
+          <mxGeometry height="80" width="80" x="1880" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="email_recipients" parent="1" style="outlineConnect=0;fontColor=#232F3E;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;" value="Email Recipients" vertex="1">
+          <mxGeometry height="80" width="80" x="1880" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_slack_apigw" edge="1" parent="1" source="slack_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="apigw" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="394" y="620" />
+              <mxPoint x="394" y="200" />
+            </Array>
+            <mxPoint x="320.00363636363625" y="620" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_apigw_trigger_lambda" edge="1" parent="1" source="apigw" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;dashed=1;" target="trigger_lambda" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="770" y="200" />
+              <mxPoint x="770" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_strands_bedrock" edge="1" parent="1" source="strands_agent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="bedrock_claude" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_strands_sm_dev" edge="1" parent="1" source="strands_agent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="sm_dev" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_strands_sns" edge="1" parent="1" source="strands_agent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="sns" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_strands_slack_webhook" edge="1" parent="1" source="strands_agent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="slack_webhook" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1920" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_strands_serpapi" edge="1" parent="1" source="strands_agent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="serpapi" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1920" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_sns_email" edge="1" parent="1" source="sns" style="edgeStyle=orthogonalEdgeStyle;rounded=0;curved=0;" target="email_recipients" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

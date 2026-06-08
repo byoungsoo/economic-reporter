@@ -1,0 +1,45 @@
+# 환경 변수
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# 로그
+*.log
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*.zip
+
+# AgentCore
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
+
+# Claude Code
+.claude/
+
+# uv
+uv.lock
