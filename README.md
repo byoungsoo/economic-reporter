@@ -28,29 +28,47 @@ EventBridge 스케줄 또는 Slack `/report` 명령으로 트리거되는 AI 에
 
 ## 아키텍처
 
-```bash
-[트리거]
-  ├─ EventBridge cron (매일 KST 06:00)
-  └─ Slack /report → API GW → Trigger Lambda (3초 내 응답)
-         ↓
-  Worker Lambda (비동기)
-         ↓
-  AgentCore Runtime (Strands Agent + Bedrock Claude Sonnet 4)
-         ↓
-  [도구 실행]
-    ├─ SerpAPI로 뉴스 수집 (9개 쿼리)
-    ├─ Slack Block Kit으로 보고서 전송
-    └─ AWS SNS로 이메일 전송
+```
+                        ┌──────────────────────────────────────────────────────────────────────┐
+                        │                        AWS dev 계정 (558846430793)                    │
+                        │                                                                      │
+  ┌──────────┐          │  ┌────────────────────────────────────────────────────────────────┐  │
+  │EventBridge│─ cron ──│─▶│          Worker Lambda (timeout 15min, 512MB)                  │  │
+  │  Rule     │ KST 6AM │  │                                                                │  │
+  └──────────┘          │  │   ┌─────────────┐    ┌─────────────────┐    ┌──────────────┐  │  │
+                        │  │   │ Strands Agent│───▶│ Bedrock Claude  │    │Secrets Manager│  │  │
+                        │  │   └──────┬───┬──┘    │ Sonnet 4        │    │              │  │  │
+                        │  │          │   │       └─────────────────┘    └──────────────┘  │  │
+                        │  │          │   │                                                 │  │
+                        │  │    ┌─────┘   └──────┐                                         │  │
+                        │  │    ▼                 ▼                                         │  │
+                        │  │ ┌────────┐    ┌───────────┐    ┌──────────┐                   │  │
+                        │  │ │SerpAPI │    │   Slack    │    │ AWS SNS  │                   │  │
+                        │  │ │(News)  │    │ (Webhook)  │    │ (Email)  │                   │  │
+                        │  │ └────────┘    └───────────┘    └──────────┘                   │  │
+                        │  └────────────────────────────────────────────────────────────────┘  │
+                        │                              ▲                                       │
+                        │                              │ async invoke                          │
+                        │                                                                      │
+  ┌──────────┐          │  ┌──────────────┐    ┌────────────────────────────────────────────┐  │
+  │  Slack   │─ /report─│─▶│ API Gateway  │───▶│  Trigger Lambda (timeout 10s)              │  │
+  │  User    │          │  │ HTTP API     │    │  - HMAC-SHA256 서명 검증                    │  │
+  │          │◀─ 200 ───│──│ (throttle)   │◀───│  - 즉시 응답 → Worker 비동기 호출           │  │
+  └──────────┘          │  └──────────────┘    └────────────────────────────────────────────┘  │
+                        │                                                                      │
+                        └──────────────────────────────────────────────────────────────────────┘
 ```
 
-![economic-reporter-architecture](docs/architecture/economic-reporter-architecture.png)
+**리소스 요약:**
 
-
-**트리거 경로**
-- **Slack 온디맨드**: Slack → API GW → Trigger Lambda → Worker Lambda → AgentCore
-- **스케줄 자동 실행**: EventBridge cron → Worker Lambda → AgentCore (매일 KST 06:00)
-
-> Trigger Lambda는 Slack 3초 응답 제한을 준수하기 위해 Worker Lambda를 비동기(`InvocationType=Event`)로 호출하고 즉시 200을 반환합니다.
+| 리소스 | 이름 | 설명 |
+|--------|------|------|
+| Worker Lambda | `bys-dev-apne2-lambda-economic-reporter-worker` | 에이전트 실행 (15분, 512MB, concurrency=1) |
+| Trigger Lambda | `bys-dev-apne2-lambda-economic-reporter-trigger` | Slack 수신 + HMAC 검증 (10초) |
+| API Gateway | `bys-dev-apne2-apigw-economic-reporter` | HTTP API (throttle: 5 req/s, burst 10) |
+| EventBridge Rule | `bys-dev-apne2-evb-economic-reporter-schedule` | `cron(0 21 * * ? *)` = KST 06:00 |
+| Lambda Layer | `bys-dev-apne2-layer-economic-reporter-deps` | strands-agents, requests 등 |
+| IAM Role | `bys-dev-apne2-role-economic-reporter-lambda` | Bedrock, Secrets Manager, SNS, Lambda |
 
 ---
 
@@ -60,13 +78,11 @@ EventBridge 스케줄 또는 Slack `/report` 명령으로 트리거되는 AI 에
 |------|------|
 | Agent Framework | [Strands SDK](https://github.com/strands-agents/sdk-python) |
 | LLM | AWS Bedrock — Claude Sonnet (`global.anthropic.claude-sonnet-4-6`) |
-| Agent 배포 | AWS AgentCore (컨테이너 기반) |
 | 스케줄 트리거 | AWS EventBridge cron → Worker Lambda |
-| 온디맨드 트리거 | Slack Slash Command → API Gateway → Trigger Lambda → Worker Lambda |
-| Slack 인증 | Lambda Authorizer (X-Slack-Signature HMAC 검증) |
+| 온디맨드 트리거 | Slack Slash Command → API Gateway HTTP API → Trigger Lambda |
 | 뉴스 수집 | [SerpAPI](https://serpapi.com/) (Google News) |
-| 시크릿 관리 | AWS Secrets Manager (`economic-reporter` 통합 시크릿) |
-| 인프라 | Terraform (멀티 계정: dev / shared) |
+| 시크릿 관리 | AWS Secrets Manager (`economic-reporter`) |
+| 인프라 | Terraform (단일 계정) |
 | 알림 | Slack Block Kit Webhook, AWS SNS Email |
 | 언어 | Python 3.11 |
 
@@ -77,7 +93,7 @@ EventBridge 스케줄 또는 Slack `/report` 명령으로 트리거되는 AI 에
 ```
 economic-reporter/
 ├── agent/
-│   ├── main.py                # AgentCore 엔트리포인트 + 로컬 실행 진입점
+│   ├── main.py                # 에이전트 실행 진입점
 │   ├── config.py              # Secrets Manager → os.environ 주입
 │   └── prompts.py             # 시스템 프롬프트 · 보고서 템플릿
 ├── tools/
@@ -85,46 +101,17 @@ economic-reporter/
 │   ├── slack_notifier.py      # Slack Block Kit 발송 Tool
 │   └── email_sender.py        # 이메일 발송 Tool (AWS SNS)
 ├── trigger/
-│   ├── slack_handler.py       # Slack 이벤트 수신 → Worker Lambda 비동기 호출
-│   ├── agentcore_worker.py    # Worker Lambda — AgentCore invoke
-│   └── slack_authorizer.py    # Slack Signing Secret 기반 Lambda Authorizer
+│   ├── slack_handler.py       # Slack 이벤트 수신 (API Gateway) → Worker 비동기 호출
+│   └── worker.py              # Worker Lambda — 에이전트 직접 실행
 ├── terraform/
-│   ├── account/
-│   │   ├── dev/               # dev 계정 루트 모듈
-│   │   │   ├── main.tf        # lambda + eventbridge 모듈 호출
-│   │   │   ├── output.tf
-│   │   │   └── environments/dev.tfvars
-│   │   └── shared/            # shared 계정 루트 모듈
-│   │       ├── main.tf        # authorizer + apigateway 모듈 호출
-│   │       ├── output.tf
-│   │       └── environments/shared.tfvars
-│   └── modules/
-│       ├── lambda/            # Trigger Lambda + Worker Lambda (dev)
-│       ├── eventbridge/       # EventBridge cron 규칙 (dev)
-│       ├── authorizer/        # Slack Authorizer Lambda (shared)
-│       └── apigateway/        # REST API Gateway (shared)
-├── .bedrock_agentcore.yaml    # AgentCore 배포 설정
-├── Dockerfile                 # AgentCore 컨테이너 이미지
-├── requirements-agentcore.txt # AgentCore 컨테이너 의존성
+│   └── account/
+│       └── aws-dev-apne2/
+│           ├── lambda/        # Trigger + Worker Lambda + IAM + Layer
+│           ├── apigateway/    # API Gateway HTTP API (Slack 엔드포인트)
+│           └── eventbridge/   # EventBridge cron 스케줄 규칙
 ├── pyproject.toml
 └── README.md
 ```
-
----
-
-## 계정 분리 구조
-
-| 리소스 | 계정 | 설명 |
-|--------|------|------|
-| EventBridge Rule | dev | `cron(0 21 * * ? *)` — KST 06:00 자동 실행 |
-| Trigger Lambda | dev | Slack 이벤트 수신 → Worker 비동기 호출 |
-| Worker Lambda | dev | AgentCore invoke (concurrency=1, retry=0) |
-| Lambda Authorizer | shared | X-Slack-Signature HMAC 검증 |
-| API Gateway | shared | `/slack` POST 엔드포인트 |
-| Secrets Manager | dev | `economic-reporter` (SERPAPI_API_KEY, SLACK_WEBHOOK_URL, SNS_TOPIC_ARN, SLACK_SIGNING_SECRET) |
-| AgentCore Runtime | dev | `economic_reporter-Zx64Bh783b` |
-
-> **cross-account 호출**: shared 계정 API Gateway가 dev 계정 Trigger Lambda를 직접 호출합니다. shared 계정 `main.tf`는 `terraform_remote_state`로 dev tfstate에서 Lambda invoke ARN을 읽습니다.
 
 ---
 
@@ -168,32 +155,31 @@ uv run python agent/main.py
 
 ## 배포
 
-### 1. Terraform (인프라)
-
-두 계정 모두 `bys-shared-ap2-s3-terraform` 버킷을 tfstate 백엔드로 사용합니다.
+### Terraform (인프라)
 
 ```bash
-# dev 계정 먼저 apply (Worker Lambda ARN이 shared tfstate에서 참조됨)
-cd terraform/account/dev
+# Lambda 컴포넌트 (먼저 apply — EventBridge에서 Worker ARN 참조)
+cd terraform/account/aws-dev-apne2/lambda
 terraform init
-terraform plan -var-file=environments/dev.tfvars
-terraform apply -var-file=environments/dev.tfvars
+terraform apply
 
-# shared 계정
-cd ../shared
+# EventBridge 컴포넌트
+cd ../eventbridge
 terraform init
-terraform plan -var-file=environments/shared.tfvars
-terraform apply -var-file=environments/shared.tfvars
+terraform apply -var="worker_lambda_arn=<위 output의 worker_function_arn>"
 ```
 
-### 2. AgentCore (AI 에이전트 컨테이너)
+> `slack_signing_secret`과 `slack_webhook_url`은 sensitive 변수이므로 `-var` 플래그 또는 환경변수(`TF_VAR_*`)로 전달합니다.
+
+### Lambda Layer 빌드
+
+Worker Lambda는 `strands-agents`, `requests` 등 외부 의존성이 필요합니다. Lambda Layer로 패키징:
 
 ```bash
-cd <project-root>
-uv run agentcore deploy
+pip install strands-agents strands-agents-tools requests python-dotenv -t python/
+zip -r python-requests-layer.zip python/
+# terraform/modules/lambda-layer/ 에 배치
 ```
-
-`agentcore deploy`는 CodeBuild를 통해 Docker 이미지를 빌드·ECR 푸시하고 AgentCore Runtime을 업데이트합니다.
 
 ---
 
@@ -211,20 +197,8 @@ schedule = "cron(0 21 * * ? *)"  # UTC 21:00 = KST 06:00
 
 1. [api.slack.com/apps](https://api.slack.com/apps)에서 Slack App 생성
 2. **Slash Commands** 메뉴에서 `/report` 커맨드 추가
-   - Request URL: `https://<api-gw-id>.execute-api.ap-northeast-2.amazonaws.com/dev/slack`
+   - Request URL: `terraform output`의 `function_url` 값 사용
 3. **Basic Information > Signing Secret**을 Secrets Manager에 저장
-
-```bash
-aws secretsmanager put-secret-value \
-  --secret-id economic-reporter \
-  --secret-string '{
-    "SERPAPI_API_KEY": "...",
-    "SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/...",
-    "SNS_TOPIC_ARN": "arn:aws:sns:...",
-    "SLACK_SIGNING_SECRET": "..."
-  }' \
-  --region ap-northeast-2
-```
 
 ### 시크릿 구조 (AWS Secrets Manager)
 
@@ -232,10 +206,10 @@ aws secretsmanager put-secret-value \
 
 | 키 | 설명 | 사용처 |
 |----|------|--------|
-| `SERPAPI_API_KEY` | SerpAPI 인증 키 | AgentCore (news_fetcher) |
-| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | AgentCore (slack_notifier) |
-| `SNS_TOPIC_ARN` | SNS 토픽 ARN | AgentCore (email_sender) |
-| `SLACK_SIGNING_SECRET` | Slack Signing Secret | Trigger Lambda, Authorizer Lambda |
+| `SERPAPI_API_KEY` | SerpAPI 인증 키 | Worker Lambda (news_fetcher) |
+| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | Worker Lambda (slack_notifier) |
+| `SNS_TOPIC_ARN` | SNS 토픽 ARN | Worker Lambda (email_sender) |
+| `SLACK_SIGNING_SECRET` | Slack Signing Secret | Trigger Lambda (HMAC 검증) |
 
 ---
 

@@ -14,25 +14,26 @@ _lambda_client = boto3.client("lambda", region_name=os.environ.get("AWS_REGION",
 
 
 def handler(event, context):
+    """Slack 이벤트 수신 → HMAC 검증 → Worker Lambda 비동기 호출.
+
+    Lambda Function URL로 직접 Slack Slash Command를 수신합니다.
+    """
     # Slack 재시도 요청은 즉시 200 반환 (Worker 호출 안 함)
-    # Slack은 3초 내 응답 없으면 X-Slack-Retry-Num 헤더를 달아서 재전송함
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
     retry_num = headers.get("x-slack-retry-num")
     logger.info("Request headers: retry_num=%s", retry_num)
     if retry_num:
-        logger.info("Slack retry request ignored: retry_num=%s reason=%s", retry_num, headers.get("x-slack-retry-reason"))
+        logger.info("Slack retry ignored: retry_num=%s reason=%s", retry_num, headers.get("x-slack-retry-reason"))
         return {"statusCode": 200, "body": ""}
 
-    # body 처리 (API Gateway가 binary를 base64로 인코딩할 수 있음)
+    # body 처리 (Function URL도 base64 인코딩할 수 있음)
     body = event.get("body", "") or ""
     if event.get("isBase64Encoded"):
         body = base64.b64decode(body).decode("utf-8")
 
     # Slack Signing Secret HMAC 검증
-    secret_arn = os.environ.get("SLACK_SIGNING_SECRET_ARN")
-    if secret_arn:
-        if not _verify_slack_signature(event, body, secret_arn, headers):
-            return {"statusCode": 401, "body": json.dumps({"error": "Unauthorized"})}
+    if not _verify_slack_signature(body, headers):
+        return {"statusCode": 401, "body": json.dumps({"error": "Unauthorized"})}
 
     # Slack url_verification challenge 응답
     content_type = headers.get("content-type", "")
@@ -44,7 +45,7 @@ def handler(event, context):
         except Exception:
             pass
 
-    # Worker Lambda 비동기 호출 (InvocationType=Event → 즉시 리턴, Slack 3초 제한 준수)
+    # Worker Lambda 비동기 호출 (Slack 3초 제한 준수)
     worker_arn = os.environ.get("WORKER_LAMBDA_ARN")
     if worker_arn:
         _lambda_client.invoke(
@@ -63,7 +64,8 @@ def handler(event, context):
     }
 
 
-def _verify_slack_signature(event, body, secret_arn, headers):
+def _verify_slack_signature(body: str, headers: dict) -> bool:
+    """Slack Signing Secret을 사용한 HMAC-SHA256 서명 검증."""
     timestamp = headers.get("x-slack-request-timestamp", "")
     slack_signature = headers.get("x-slack-signature", "")
 
@@ -72,13 +74,10 @@ def _verify_slack_signature(event, body, secret_arn, headers):
     if abs(time.time() - int(timestamp)) > 300:
         return False
 
-    # 환경변수에서 직접 읽어 Secrets Manager 조회 레이턴시 제거
-    signing_secret = os.environ.get("SLACK_SIGNING_SECRET")
+    signing_secret = os.environ.get("SLACK_SIGNING_SECRET", "")
     if not signing_secret:
-        client = boto3.client("secretsmanager")
-        secret = client.get_secret_value(SecretId=secret_arn)
-        data = json.loads(secret["SecretString"])
-        signing_secret = data.get("SLACK_SIGNING_SECRET") or data.get("signing_secret")
+        logger.error("SLACK_SIGNING_SECRET 환경변수가 설정되지 않았습니다.")
+        return False
 
     sig_basestring = f"v0:{timestamp}:{body}"
     expected = "v0=" + hmac.new(

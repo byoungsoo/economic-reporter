@@ -34,10 +34,6 @@ build/
 *.tfplan
 *.zip
 
-# AgentCore
-.bedrock_agentcore/
-.bedrock_agentcore.yaml
-
 # Claude Code
 .claude/
 
